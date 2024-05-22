@@ -25,8 +25,8 @@ public with sharing class Contacts  extends fflib_SObjectDomain {
         new UpdateNewestContactOnAccount(records).execute();
     }
 
-
-    public override void onBeforeDelete() {
+    // By moving from beforeDelete to afterDelete, we can simplify the trigger handler
+    public override void onAfterDelete() {
         new UpdateNewestContactOnAccount(records).execute();
     }
 

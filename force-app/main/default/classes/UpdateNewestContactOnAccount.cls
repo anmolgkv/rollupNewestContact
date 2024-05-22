@@ -1,18 +1,13 @@
 public with sharing class UpdateNewestContactOnAccount {
 
     private Set<Id> accountIds;
-    private Set<Id> contactIdsToBeIgnored = new Set<Id>();
 
     // CONSTRUCTOR
 
     public UpdateNewestContactOnAccount(List<Contact> contacts) {
         this.accountIds = accountIdsFor(contacts);
-
-        // Note: In case a contact is deleted.
-        // ignore it while recalculating as its still available in related list during before delete
-        if(Trigger.operationType == TriggerOperation.BEFORE_DELETE) {
-            contactIdsToBeIgnored = new Map<Id, Contact>(contacts).keySet();
-        }
+        
+        // Note that there's no need for treating delete as special case because now, after delete, the records are no returned in the query
     }
 
 
@@ -26,7 +21,7 @@ public with sharing class UpdateNewestContactOnAccount {
     public void execute() {
         List<Account> accountsToBeUpdated = new List<Account>();
 
-        List<Account> accounts = [SELECT Id, (SELECT Id FROM Contacts ORDER BY LastModifiedDate DESC)
+        List<Account> accounts = [SELECT Id, (SELECT Id FROM Contacts ORDER BY LastModifiedDate DESC LIMIT 1)
                                     FROM Account
                                     WHERE Id IN : accountIds
                                     WITH USER_MODE];
@@ -35,7 +30,7 @@ public with sharing class UpdateNewestContactOnAccount {
             accountsToBeUpdated.add(
                 new Account(
                     Id = account.Id,
-                    NewestContact__c = newestContactId(account.Contacts)
+                        NewestContact__c = account.Contacts.isEmpty() ? null : account.Contacts[0].Id
                 )
             );
         }
@@ -45,17 +40,6 @@ public with sharing class UpdateNewestContactOnAccount {
 
 
     // PRIVATE
-
-    private Id newestContactId(List<Contact> contacts) {
-        for(Contact contact : contacts) {
-            if(!contactIdsToBeIgnored.contains(contact.Id)) {
-                return contact.Id;
-            }
-        }
-
-        return null;
-    }
-
 
     private Set<Id> accountIdsFor(List<Contact> contacts) {
         Set<Id> result = new Set<Id>();
