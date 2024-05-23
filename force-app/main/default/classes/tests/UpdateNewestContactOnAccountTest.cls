@@ -43,11 +43,18 @@ private class UpdateNewestContactOnAccountTest {
                                             .add(new Contact_t().first('Contact').last('One'))
                                             .persist();
 
+            // I want to be sure that I've done the setup right and the test really is valid, so I don't mind using
+            // assert for that before the Verify step
+            Account updatedAccount = [SELECT NewestContact__r.FirstName, NewestContact__r.LastName FROM Account];
+            Assert.areEqual('One', updatedAccount.NewestContact__r.LastName);
+            
+            sleep(1000);
+            
             // Exercise
             insert new Contact(AccountId = account.Id, FirstName = 'Contact', LastName = 'Two');
 
             // Verify
-            Account updatedAccount = [SELECT NewestContact__r.FirstName, NewestContact__r.LastName FROM Account];
+            updatedAccount = [SELECT NewestContact__r.FirstName, NewestContact__r.LastName FROM Account];
             Assert.areEqual('Two', updatedAccount.NewestContact__r.LastName);
         }
     }
@@ -157,6 +164,8 @@ private static void unDeleteContact() {
     }
 
 
+    // Sleep method is useful to make sure that when we create one record after another, this doesn't happen in the same
+    // moment and cause them to have the same CreatedDate
     private static void sleep(integer milliseconds) {
         Long timeDiff = 0;
         DateTime firstTime = System.now();
